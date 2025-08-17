@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Alfred the Medical Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .chat-container {
+            width: 420px;
+            height: 600px;
+            background: #1e1e1e;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 12px rgba(0,0,0,0.7);
+            position: relative;
+        }
+
+        /* Header */
+        .chat-header {
+            padding: 12px;
+            background: #2c2c2c;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .chat-header i {
+            margin-right: 8px;
+            color: #00bfff;
+        }
+        .clear-btn {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            background: none;
+            border: none;
+            color: #ff5c5c;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        /* Chat Box */
+        .chat-box {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message {
+            padding: 8px 12px;
+            border-radius: 10px;
+            max-width: 75%;
+            word-wrap: break-word;
+            display: inline-block;
+        }
+        .user-message {
+            align-self: flex-end;
+            background: #3a3f44;
+            color: #fff;
+        }
+        .assistant-message {
+            align-self: flex-start;
+            background: #2c2c2c;
+            color: #e0e0e0;
+        }
+        .thinking {
+            font-style: italic;
+            color: #00bfff;
+            opacity: 0.8;
+        }
+
+        /* Input Area */
+        .chat-input {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #2c2c2c;
+            border-radius: 0 0 12px 12px;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            background: #1e1e1e;
+            color: #e0e0e0;
+        }
+        .chat-input button {
+            background: #00bfff;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            margin-left: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .chat-input button i {
+            color: #fff;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <button class="clear-btn" onclick="window.location.href='/clear'"><i class="fas fa-times"></i></button>
+            <i class="fas fa-stethoscope"></i> Alfred the Medical Assistant
+        </div>
+
+        <div class="chat-box">
+            {% for message in messages %}
+                <div class="message {{ 'user-message' if message.role == 'user' else 'assistant-message' }}">
+                    <strong>{{ 'You' if message.role == 'user' else 'Alfred' }}:</strong><br>
+                    {{ message.content | safe }}
+                </div>
+            {% endfor %}
+        </div>
+
+        <form method="post" class="chat-input">
+            <input type="text" name="prompt" placeholder="Type your medical query..." autocomplete="off">
+            <button type="submit"><i class="fas fa-paper-plane"></i></button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.querySelector("form");
+        const chatBox = document.querySelector(".chat-box");
+        const input = document.querySelector("input[name='prompt']");
+
+        form.addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const userMessage = input.value.trim();
+            if (!userMessage) return;
+
+            // Append user message
+            const userDiv = document.createElement("div");
+            userDiv.className = "message user-message";
+            userDiv.innerHTML = `<strong>You:</strong><br>${userMessage}`;
+            chatBox.appendChild(userDiv);
+
+            // Add "thinking..." placeholder
+            const thinkingDiv = document.createElement("div");
+            thinkingDiv.className = "message assistant-message thinking";
+            thinkingDiv.innerHTML = `<em>Alfred is thinking...</em>`;
+            chatBox.appendChild(thinkingDiv);
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Send message to backend
+            const formData = new FormData(form);
+            const response = await fetch("/", { method: "POST", body: formData });
+
+            // Replace messages with fresh ones from server
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+            const newMessages = doc.querySelector(".chat-box").innerHTML;
+
+            chatBox.innerHTML = newMessages;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            input.value = "";
+        });
+    </script>
+</body>
+</html>
